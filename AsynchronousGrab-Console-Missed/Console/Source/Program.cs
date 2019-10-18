@@ -32,7 +32,7 @@ namespace AsynchronousGrabConsole
 {
     using System;
     using System.Collections.Generic;
-
+    using System.Threading;
     using AVT.VmbAPINET;
 
     /// <summary>
@@ -129,7 +129,9 @@ namespace AsynchronousGrabConsole
                         Console.WriteLine("Press <c> to capture 16 photos OR <q> to stop acquisition ...");
                         Console.WriteLine("Frame receiving ...\n\n");
 
-                        // Joe: only 'q' keystroke will stop the loop
+#if  false
+
+                        // Joe: case 1 - only 'q' keystroke will stop the loop
                         char c = ' ';
                         while ((c = Console.ReadKey().KeyChar) != 'q')
                         {
@@ -144,6 +146,24 @@ namespace AsynchronousGrabConsole
                                 Console.WriteLine("\nPress <q> to stop acquisition..., The current date and time: {0:MM/dd/yyyy HH:mm:ss.fff}\n", DateTime.Now);
                             }
                         }
+#else
+
+
+                        // Joe: Case 2 - shot 16 frames periodly
+                        long i = 0;
+                        while (i < 1000000000000) {
+                            i++;
+
+                            Console.WriteLine("\nStart capturing 16 photos ..., i = {0:0000000000}", i);
+                            vimbaHelper.StopCapture(); // stop the last round
+                            vimbaHelper.StartCapture();
+
+                            // Wait for 500 ms and continue the next round
+                            Thread.Sleep(500);
+
+                        }
+#endif
+
 
                         // Stop the image acquisition
                         vimbaHelper.StopContinuousImageAcquisition();
