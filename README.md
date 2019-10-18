@@ -19,7 +19,8 @@ VimbaNET_Examples\AsynchronousGrab-Console Example with missing/incomplete frame
 # Visual Studio 设置
 此程序使用了`OpenCvSharp`组件。
 可以使用Visual Studio 2017或者更高版本，从NuGet中安装 `OpenCvSharp` 组件。
-https://github.com/shimat/opencvsharp
+https://github.com/shimat/opencvsharp  
+使用方法：https://blog.csdn.net/bayinglong/article/details/84258687
 
 
 
