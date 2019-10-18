@@ -294,16 +294,31 @@ namespace AsynchronousGrabConsole
             // (In this example we do not test whether this cam actually is a GigE cam)
             try
             {
+                /*
                 m_Camera.Features["GVSPAdjustPacketSize"].RunCommand();
                 while (false == m_Camera.Features["GVSPAdjustPacketSize"].IsCommandDone())
                 {
                     // Do nothing
                 }
-                // TODO: set multiframe 16 photos mode
+                */
+
+                // Joe: set multiframe 16 photos mode
+                m_Camera.Features["AcquisitionFrameCount"].IntValue = 16;
+                m_Camera.Features["AcquisitionMode"].EnumValue = "MultiFrame";
+
+                m_Camera.Features["DeviceLinkThroughputLimit"].IntValue = 440000000;
+
+                m_Camera.Features["Width"].IntValue = 1200;
+                m_Camera.Features["Height"].IntValue = 800;
+
+                m_Camera.Features["OffsetX"].IntValue = (m_Camera.Features["WidthMax"].IntValue - m_Camera.Features["Width"].IntValue) / 2 / 4 * 4;
+                m_Camera.Features["OffsetY"].IntValue = (m_Camera.Features["HeightMax"].IntValue - m_Camera.Features["Height"].IntValue) / 2 / 4 * 4;
+
             }
             catch
             {
                 // Do nothing
+                Console.WriteLine("Failed to set parameters for the camera !");
             }
 
             bool error = true;
