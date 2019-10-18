@@ -27,10 +27,14 @@
 
 =============================================================================*/
 
+using OpenCvSharp;
+
 namespace AsynchronousGrabConsole
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
+    using System.Threading;
     using AVT.VmbAPINET;
 
     /// <summary>
@@ -53,6 +57,9 @@ namespace AsynchronousGrabConsole
 
         private long tkCaptureStart = DateTime.Now.Ticks;
         private long tkCaptureComplete = DateTime.Now.Ticks;
+
+        Queue queueFrames = new Queue(16);
+ 
 
         /// <summary>
         /// Initializes a new instance of the VimbaHelper class
@@ -202,6 +209,7 @@ namespace AsynchronousGrabConsole
                     // Do nothing
                 }
             }
+
             catch
             {
                 // Do nothing
@@ -291,6 +299,7 @@ namespace AsynchronousGrabConsole
                 {
                     // Do nothing
                 }
+                // TODO: set multiframe 16 photos mode
             }
             catch
             {
@@ -322,7 +331,7 @@ namespace AsynchronousGrabConsole
             }
         }
 
-        public void CloseCamera(){
+        public void CloseCamera() {
             ReleaseCamera();
 
         }
@@ -336,7 +345,7 @@ namespace AsynchronousGrabConsole
             tkCaptureStart = DateTime.Now.Ticks;
 
             // Start asynchronous image acquisition (grab)
-            m_Camera.StartContinuousImageAcquisition(16); 
+            m_Camera.StartContinuousImageAcquisition(16);
         }
 
         public void StopCapture() {
@@ -347,6 +356,11 @@ namespace AsynchronousGrabConsole
             }
         }
 
+
+        public double GetCameraTemprature()
+        {
+            return m_Camera.Features["DeviceTemperature"].FloatValue;
+        }
 
         /// <summary>
         /// Display the image as dots or show the FrameInfo
@@ -538,6 +552,48 @@ namespace AsynchronousGrabConsole
             return status;
         }
 
+
+
+        /// <summary>
+        /// 使用OpenCvSharp处理16张图片 
+        /// </summary>
+        /// <returns>时间消耗ms</returns>
+        private double ProcessImages()
+        {
+            Console.WriteLine("queueFrames.Count = {0}", queueFrames.Count );
+
+            long tkImgProcStart = DateTime.Now.Ticks;
+
+
+            long idx = 0;
+            while(queueFrames.Count > 0)
+            {
+                Frame frame = (Frame)queueFrames.Dequeue();
+                idx++;
+                String strName = String.Format("opencv{0:00}.png", idx);
+                String strNameCanny = String.Format("opencv{0:00}-canny.png", idx);
+
+                // Try OpenCvSharp processing
+                Mat img = new Mat((int)frame.Height, (int)frame.Width, MatType.CV_8U, frame.Buffer);
+                Mat res = new Mat();
+
+                Cv2.Canny(img, res, 50, 200);
+
+                // 保存最近一张
+                if(queueFrames.Count == 0)
+                { 
+                    img.SaveImage(strName);
+                    res.SaveImage(strNameCanny);
+                }
+            }
+
+            long tkImgProcEnd = DateTime.Now.Ticks;
+
+            TimeSpan tmSpanImgProc = new TimeSpan(tkImgProcEnd - tkImgProcStart);
+
+            return tmSpanImgProc.TotalMilliseconds; 
+        }
+
         /// <summary>
         /// Handles the frame received event
         /// The frame is displayed and eventually queued
@@ -545,19 +601,44 @@ namespace AsynchronousGrabConsole
         /// <param name="frame">The received frame</param>
         private void OnFrameReceived(Frame frame)
         {
+            const int simulate_image_processing = 200; // ms
             try
             {
+                if (frame.FrameID == 0)
+                {
+                    queueFrames.Clear();
+                }
+
+                queueFrames.Enqueue(frame);
+
                 // Convert frame into displayable image
                 OutPutFrameInfo(frame);
 
+                // Joe: 
+                // 图像处理 ------------------------------------------------------------------ //
+                // 图像处理 ------------------------------------------------------------------ //
+                // 图像处理 ------------------------------------------------------------------ //
                 // automatically stop capturing when 16 maximum photos captured.
-                if (frame.FrameID == 15) { // #15 is the last one of 16 sequences
-                    //StopCapture(); 
-                    // 获取系统启动后经过的毫秒数。 
+                if (frame.FrameID == 15)
+                { // #15 is the last one of 16 sequences
+
+                    // 获取当前时间的毫秒计数
                     tkCaptureComplete = DateTime.Now.Ticks;
                     TimeSpan elapsedSpan = new TimeSpan(tkCaptureComplete - tkCaptureStart);
-                    Console.WriteLine("Time consumption of 16 photos: {0:000.000} ms", elapsedSpan.TotalMilliseconds);
+
+
+                    // 模拟图像处理 200ms
+                    // 注意：当前处理图片接收回调函数，为避免影响图像接收，在最后一张（第16张图像）接收完成后，再统一做图像处理方面的工作。
+                    //Thread.Sleep(simulate_image_processing);
+                    double tmImgProc = ProcessImages();
+
+
+                    Console.WriteLine("Time consumption of receiving 16 photos: {0:000.000} ms, and additional {1} ms for image processing!",
+                        elapsedSpan.TotalMilliseconds, tmImgProc);
+
                 }
+                // 图像处理 ------------------------------------------------------------------ //
+
             }
             finally
             {
@@ -571,6 +652,7 @@ namespace AsynchronousGrabConsole
                     // Do nothing
                 }
             }
+
         }
 
         /// <summary>

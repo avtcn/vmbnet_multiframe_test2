@@ -60,7 +60,7 @@ namespace AsynchronousGrabConsole
             Console.WriteLine("/// Vimba NET API Asynchronous Console Grab Example       ///");
             Console.WriteLine("/// with missing/incomplete frames statistics functions   ///");
             Console.WriteLine("///                                                       ///");
-            Console.WriteLine("/// For Truking                                           ///");
+            Console.WriteLine("/// For Truking, 16 multiframes test                      ///");
             Console.WriteLine("///                                                       ///");
             Console.WriteLine("/////////////////////////////////////////////////////////////");
             Console.WriteLine();
@@ -149,12 +149,13 @@ namespace AsynchronousGrabConsole
 #else
 
 
-                        // Joe: Case 2 - shot 16 frames periodly
+                        // Joe: Case 2 - shot 16 frames periodly with multiframe feature enabled.
                         long i = 0;
                         while (i < 1000000000000) {
+                        //while (i < 1) {
                             i++;
 
-                            Console.WriteLine("\nStart capturing 16 photos ..., i = {0:0000000000}", i);
+                            Console.WriteLine("\nStart capturing 16 photos ..., i = {0:0000000000}, Temp = {1:00.0000}", i, vimbaHelper.GetCameraTemprature());
                             vimbaHelper.StopCapture(); // stop the last round
                             vimbaHelper.StartCapture();
 
@@ -164,6 +165,7 @@ namespace AsynchronousGrabConsole
                         }
 #endif
 
+                        Console.ReadKey();
 
                         // Stop the image acquisition
                         vimbaHelper.StopContinuousImageAcquisition();
