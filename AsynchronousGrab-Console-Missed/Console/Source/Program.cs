@@ -60,7 +60,7 @@ namespace AsynchronousGrabConsole
             Console.WriteLine("/// Vimba NET API Asynchronous Console Grab Example       ///");
             Console.WriteLine("/// with missing/incomplete frames statistics functions   ///");
             Console.WriteLine("///                                                       ///");
-            Console.WriteLine("/// For Truking, 16 multiframes test                      ///");
+            Console.WriteLine("/// For Truking, statistics of 16 multiframes test        ///");
             Console.WriteLine("///                                                       ///");
             Console.WriteLine("/////////////////////////////////////////////////////////////");
             Console.WriteLine();
@@ -126,7 +126,7 @@ namespace AsynchronousGrabConsole
                         //vimbaHelper.StartContinuousImageAcquisition(cameraID, showFrameInfos);
                         vimbaHelper.OpenCamera(cameraID, showFrameInfos);
 
-                        Console.WriteLine("Press <c> to capture 16 photos OR <q> to stop acquisition ...");
+                        Console.WriteLine("Press <ctrl+c> to stop acquisition ...");
                         Console.WriteLine("Frame receiving ...\n\n");
 
 #if  false
@@ -155,9 +155,10 @@ namespace AsynchronousGrabConsole
                         //while (i < 1) {
                             i++;
 
-                            Console.WriteLine("\nStart capturing 16 photos ..., i = {0:0000000000}, Temp = {1:00.0000}", i, vimbaHelper.GetCameraTemprature());
+                            double temp = vimbaHelper.GetCameraTemprature();
+                            Console.WriteLine("\nStart capturing 16 photos ..., i = {0:0000000000}, Temp = {1:00.0000}", i, temp);
                             vimbaHelper.StopCapture(); // stop the last round
-                            vimbaHelper.StartCapture();
+                            vimbaHelper.StartCapture(i, temp);
 
                             // Wait for 500 ms and continue the next round
                             Thread.Sleep(500);

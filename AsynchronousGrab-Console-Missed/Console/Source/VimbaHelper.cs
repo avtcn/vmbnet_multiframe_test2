@@ -34,6 +34,7 @@ namespace AsynchronousGrabConsole
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.IO;
     using System.Threading;
     using AVT.VmbAPINET;
 
@@ -59,6 +60,8 @@ namespace AsynchronousGrabConsole
         private long tkCaptureComplete = DateTime.Now.Ticks;
 
         Queue queueFrames = new Queue(16);
+
+        StreamWriter swLog = new StreamWriter("truking-log.csv");
  
 
         /// <summary>
@@ -303,8 +306,8 @@ namespace AsynchronousGrabConsole
                 */
 
                 // Joe: set multiframe 16 photos mode
-                m_Camera.Features["AcquisitionFrameCount"].IntValue = 16;
                 m_Camera.Features["AcquisitionMode"].EnumValue = "MultiFrame";
+                m_Camera.Features["AcquisitionFrameCount"].IntValue = 16;
 
                 m_Camera.Features["DeviceLinkThroughputLimit"].IntValue = 440000000;
 
@@ -351,13 +354,16 @@ namespace AsynchronousGrabConsole
 
         }
 
-        public void StartCapture() {
+        public void StartCapture(long iteration, double temp) {
+            swLog.Write("index, {0:0000000000}, temp, {1:0.000}, ", iteration, temp);
+
             // Reset new round of capturing
             m_Acquiring = true;
             m_FrameID = 0;
             systemTime = DateTime.Now.Ticks;  // Hold the system time to calculate the frame rate
 
             tkCaptureStart = DateTime.Now.Ticks;
+
 
             // Start asynchronous image acquisition (grab)
             m_Camera.StartContinuousImageAcquisition(16);
@@ -464,6 +470,8 @@ namespace AsynchronousGrabConsole
                     long firstArrivedFrameTicks = DateTime.Now.Ticks;
                     TimeSpan elapsedSpanFirstFrame = new TimeSpan(firstArrivedFrameTicks - tkCaptureStart);
                     Console.Write(" FirstFrameConsume: {0:.000} ms", elapsedSpanFirstFrame.TotalMilliseconds);
+
+                    swLog.Write("fisrtframe, {0:.000}, ", elapsedSpanFirstFrame.TotalMilliseconds);
                 }
                 else
                 {
@@ -575,7 +583,7 @@ namespace AsynchronousGrabConsole
         /// <returns>时间消耗ms</returns>
         private double ProcessImages()
         {
-            Console.WriteLine("queueFrames.Count = {0}", queueFrames.Count );
+            Console.WriteLine("queueFrames.Count = {0}", queueFrames.Count);
 
             long tkImgProcStart = DateTime.Now.Ticks;
 
@@ -650,6 +658,11 @@ namespace AsynchronousGrabConsole
 
                     Console.WriteLine("Time consumption of receiving 16 photos: {0:000.000} ms, and additional {1} ms for image processing!",
                         elapsedSpan.TotalMilliseconds, tmImgProc);
+
+                    //swLog.WriteLine("Time consumption of receiving 16 photos: {0:000.000} ms, and additional {1} ms for image processing!",
+                    //    elapsedSpan.TotalMilliseconds, tmImgProc);
+                    swLog.WriteLine("16frames_time, {0:.000}, imgproc_time, {1:.000}, ", elapsedSpan.TotalMilliseconds, tmImgProc);
+                    swLog.Flush();
 
                 }
                 // 图像处理 ------------------------------------------------------------------ //
