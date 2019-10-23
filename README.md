@@ -3,6 +3,7 @@ Vimba .NET 图像采集状态统计例程 - vmbnet_freerun_missing_frames_statis
 
 # 简介
 
+FreeRun version:  
 VimbaNET_Examples\AsynchronousGrab-Console Example with missing/incomplete frames counting functions.  
 基于VimbaNET_Examples\AsynchronousGrab-Console例程，增加图像接收统计功能。  
 通过每张图片的连续递增序号以及每张图片的状态值来判断丢失或者不完整的图片数量。  
