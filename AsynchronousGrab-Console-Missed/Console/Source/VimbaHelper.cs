@@ -742,6 +742,7 @@ namespace AsynchronousGrabConsole
                 m_Temp = temp;
 
                 m_FramesFailed = 0;
+                m_FramesMissed = 0;
             }
 
             return true;
