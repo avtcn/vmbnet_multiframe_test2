@@ -60,7 +60,9 @@ namespace AsynchronousGrabConsole
             Console.WriteLine("/// Vimba NET API Asynchronous Console Grab Example       ///");
             Console.WriteLine("/// with missing/incomplete frames statistics functions   ///");
             Console.WriteLine("///                                                       ///");
-            Console.WriteLine("/// For Truking, statistics of 16 multiframes test        ///");
+            Console.WriteLine("/// For Truking, statistics of 16 multiframes test ver2   ///");
+            Console.WriteLine("/// Use FreeRun mode!                                     ///");
+            Console.WriteLine("///                                                       ///");
             Console.WriteLine("///                                                       ///");
             Console.WriteLine("/////////////////////////////////////////////////////////////");
             Console.WriteLine();
@@ -129,7 +131,7 @@ namespace AsynchronousGrabConsole
                         Console.WriteLine("Press <ctrl+c> to stop acquisition ...");
                         Console.WriteLine("Frame receiving ...\n\n");
 
-#if  false
+#if false
 
                         // Joe: case 1 - only 'q' keystroke will stop the loop
                         char c = ' ';
@@ -150,6 +152,8 @@ namespace AsynchronousGrabConsole
 
 
                         // Joe: Case 2 - shot 16 frames periodly with multiframe feature enabled.
+                        vimbaHelper.StartCapture();
+
                         long i = 0;
                         while (i < 1000000000000) {
                         //while (i < 1) {
@@ -157,13 +161,16 @@ namespace AsynchronousGrabConsole
 
                             double temp = vimbaHelper.GetCameraTemprature();
                             Console.WriteLine("\nStart capturing 16 photos ..., i = {0:0000000000}, Temp = {1:00.0000}", i, temp);
-                            vimbaHelper.StopCapture(); // stop the last round
-                            vimbaHelper.StartCapture(i, temp);
+
+                            vimbaHelper.Start16FramesCapturing(temp);
 
                             // Wait for 500 ms and continue the next round
-                            Thread.Sleep(500);
+                            Thread.Sleep(400);
 
+                            vimbaHelper.Waiting16Frames(1000); 
                         }
+
+                        vimbaHelper.StopCapture(); // stop the last round
 #endif
 
                         Console.ReadKey();

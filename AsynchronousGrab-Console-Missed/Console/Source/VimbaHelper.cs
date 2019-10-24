@@ -31,12 +31,12 @@ using OpenCvSharp;
 
 namespace AsynchronousGrabConsole
 {
+    using AVT.VmbAPINET;
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.IO;
     using System.Threading;
-    using AVT.VmbAPINET;
 
     /// <summary>
     /// A helper class as a wrapper around Vimba
@@ -46,6 +46,14 @@ namespace AsynchronousGrabConsole
         private Vimba m_Vimba = null;                           // Main Vimba API entry object
         private Camera m_Camera = null;                         // Camera object if camera is open
         private bool m_Acquiring = false;                       // Flag to remember if acquisition is running
+
+        static Semaphore semMultiFrames = new Semaphore(0, 1);
+        private bool m_Queuing = false;                       // Flag to remember if acquisition is running
+        private static object s_lock = new object();
+        private bool m_PrintedTag = false;
+        long m_RoundIndex = 0;
+        double m_Temp = 0;
+
         private FrameInfos m_ShowFrameInfo = FrameInfos.Off;    // Indicates if frame info is shown in the console
         private long systemTime = DateTime.Now.Ticks;  // Hold the system time to calculate the frame rate
         private ulong m_FrameID = 0;
@@ -62,7 +70,7 @@ namespace AsynchronousGrabConsole
         Queue queueFrames = new Queue(16);
 
         StreamWriter swLog = new StreamWriter("truking-log.csv");
- 
+
 
         /// <summary>
         /// Initializes a new instance of the VimbaHelper class
@@ -297,17 +305,12 @@ namespace AsynchronousGrabConsole
             // (In this example we do not test whether this cam actually is a GigE cam)
             try
             {
-                /*
-                m_Camera.Features["GVSPAdjustPacketSize"].RunCommand();
-                while (false == m_Camera.Features["GVSPAdjustPacketSize"].IsCommandDone())
-                {
-                    // Do nothing
-                }
-                */
 
                 // Joe: set multiframe 16 photos mode
-                m_Camera.Features["AcquisitionMode"].EnumValue = "MultiFrame";
-                m_Camera.Features["AcquisitionFrameCount"].IntValue = 16;
+                //m_Camera.Features["AcquisitionMode"].EnumValue = "MultiFrame";
+                //m_Camera.Features["AcquisitionFrameCount"].IntValue = 16;
+
+                // Joe: use FreeRun mode
 
                 m_Camera.Features["DeviceLinkThroughputLimit"].IntValue = 440000000;
 
@@ -333,10 +336,6 @@ namespace AsynchronousGrabConsole
                 // Reset member variables
                 //m_Acquiring = true;
                 m_Acquiring = false;
-
-                // Start synchronous image acquisition (grab)
-                //m_Camera.StartContinuousImageAcquisition(3);
-
                 error = false;
             }
             finally
@@ -349,13 +348,14 @@ namespace AsynchronousGrabConsole
             }
         }
 
-        public void CloseCamera() {
+        public void CloseCamera()
+        {
             ReleaseCamera();
 
         }
 
-        public void StartCapture(long iteration, double temp) {
-            swLog.Write("index, {0:0000000000}, temp, {1:0.000}, ", iteration, temp);
+        public void StartCapture(long iteration, double temp)
+        {
 
             // Reset new round of capturing
             m_Acquiring = true;
@@ -369,7 +369,24 @@ namespace AsynchronousGrabConsole
             m_Camera.StartContinuousImageAcquisition(16);
         }
 
-        public void StopCapture() {
+        public void StartCapture()
+        {
+            // swLog.Write("index, {0:0000000000}, temp, {1:0.000}, ", iteration, temp);
+
+            // Reset new round of capturing
+            m_Acquiring = true;
+            m_FrameID = 0;
+            systemTime = DateTime.Now.Ticks;  // Hold the system time to calculate the frame rate
+
+            tkCaptureStart = DateTime.Now.Ticks;
+
+
+            // Start asynchronous image acquisition (grab)
+            m_Camera.StartContinuousImageAcquisition(16);
+        }
+
+        public void StopCapture()
+        {
             if (true == m_Acquiring)
             {
                 m_Camera.StopContinuousImageAcquisition();
@@ -387,7 +404,7 @@ namespace AsynchronousGrabConsole
         /// Display the image as dots or show the FrameInfo
         /// </summary>
         /// <param name="frame">The received frame</param>
-        private void OutPutFrameInfo(Frame frame)
+        private void OutPutFrameInfo(Frame frame, bool bFirstFrame, ulong nFirstFrameID)
         {
             bool showFrameInfo = false;
             double frameRate = 0;
@@ -397,6 +414,10 @@ namespace AsynchronousGrabConsole
             {
                 throw new ArgumentNullException("frame");
             }
+
+            // Remember the first frame id for the 16 frames group
+            if (bFirstFrame)
+                m_FrameID = nFirstFrameID;
 
             frameRate = CalcFPS(); // Get frame rate
 
@@ -430,7 +451,7 @@ namespace AsynchronousGrabConsole
             if (m_ShowFrameInfo == FrameInfos.Show || (showFrameInfo && m_ShowFrameInfo == FrameInfos.Automatic))
             {
                 if (m_ShowFrameInfo == FrameInfos.Automatic)
-                    Console.WriteLine(string.Empty); 
+                    Console.WriteLine(string.Empty);
 
                 Console.Write("FrameID: {0:000}", frame.FrameID);
 
@@ -455,29 +476,29 @@ namespace AsynchronousGrabConsole
 
                 ulong ulCameraStDiff = frame.Timestamp - m_FrameTimeStampPre;
 
-                if (frame.FrameID == 0)
+                if (bFirstFrame)
                 {
                 }
                 else
-                { 
+                {
                     Console.Write(" StDiff:");
                     Console.Write(ulCameraStDiff);
                 }
                 m_FrameTimeStampPre = frame.Timestamp;
 
-                if (frame.FrameID == 0)
+                if (bFirstFrame)
                 {
                     long firstArrivedFrameTicks = DateTime.Now.Ticks;
                     TimeSpan elapsedSpanFirstFrame = new TimeSpan(firstArrivedFrameTicks - tkCaptureStart);
-                    Console.Write(" FirstFrameConsume: {0:.000} ms", elapsedSpanFirstFrame.TotalMilliseconds);
+                    Console.Write(" FirstFrameConsume: {0:000.000} ms", elapsedSpanFirstFrame.TotalMilliseconds);
 
-                    swLog.Write("fisrtframe, {0:.000}, ", elapsedSpanFirstFrame.TotalMilliseconds);
+                    swLog.Write("firstframe, {0:000.000}, ", elapsedSpanFirstFrame.TotalMilliseconds);
                 }
                 else
                 {
                     Console.Write(" CameraFPS: {0:.00},", (double)1000000000 / ulCameraStDiff);
                 }
-                
+
                 /*
                 Console.Write(" ClientFPS:");
 
@@ -490,7 +511,7 @@ namespace AsynchronousGrabConsole
                     Console.WriteLine("?");
                 }
                 */
-                Console.WriteLine("");
+                Console.WriteLine(" ");
             }
             else
             {
@@ -507,7 +528,7 @@ namespace AsynchronousGrabConsole
         {
             ulong missingFrames;
             // For USB the very first frame ID is 0
-            if (frame.FrameID == 0 && m_FrameID == 0) 
+            if (frame.FrameID == 0 && m_FrameID == 0)
             {
                 missingFrames = 0;
             }
@@ -589,7 +610,7 @@ namespace AsynchronousGrabConsole
 
 
             long idx = 0;
-            while(queueFrames.Count > 0)
+            while (queueFrames.Count > 0)
             {
                 Frame frame = (Frame)queueFrames.Dequeue();
                 idx++;
@@ -603,8 +624,8 @@ namespace AsynchronousGrabConsole
                 Cv2.Canny(img, res, 50, 200);
 
                 // 保存最近一张
-                if(queueFrames.Count == 0)
-                { 
+                if (queueFrames.Count == 0)
+                {
                     img.SaveImage(strName);
                     res.SaveImage(strNameCanny);
                 }
@@ -614,7 +635,7 @@ namespace AsynchronousGrabConsole
 
             TimeSpan tmSpanImgProc = new TimeSpan(tkImgProcEnd - tkImgProcStart);
 
-            return tmSpanImgProc.TotalMilliseconds; 
+            return tmSpanImgProc.TotalMilliseconds;
         }
 
         /// <summary>
@@ -627,43 +648,63 @@ namespace AsynchronousGrabConsole
             const int simulate_image_processing = 200; // ms
             try
             {
-                if (frame.FrameID == 0)
+                lock (s_lock)
                 {
-                    queueFrames.Clear();
+                    if (m_Queuing && queueFrames.Count < 16)
+                    {
+                        queueFrames.Enqueue(frame);
+
+                        if (queueFrames.Count == 1)
+                        {
+                            m_RoundIndex++;
+                            swLog.Write("index, {0:0000000000}, temp, {1:00.000}, ", m_RoundIndex, m_Temp);
+                        }
+
+                        // Convert frame into displayable image
+                        OutPutFrameInfo(frame, queueFrames.Count == 1, frame.FrameID);
+                    } 
                 }
 
-                queueFrames.Enqueue(frame);
 
-                // Convert frame into displayable image
-                OutPutFrameInfo(frame);
+
 
                 // Joe: 
                 // 图像处理 ------------------------------------------------------------------ //
                 // 图像处理 ------------------------------------------------------------------ //
                 // 图像处理 ------------------------------------------------------------------ //
                 // automatically stop capturing when 16 maximum photos captured.
-                if (frame.FrameID == 15)
-                { // #15 is the last one of 16 sequences
-
-                    // 获取当前时间的毫秒计数
-                    tkCaptureComplete = DateTime.Now.Ticks;
-                    TimeSpan elapsedSpan = new TimeSpan(tkCaptureComplete - tkCaptureStart);
+                lock (s_lock)
+                {
 
 
-                    // 模拟图像处理 200ms
-                    // 注意：当前处理图片接收回调函数，为避免影响图像接收，在最后一张（第16张图像）接收完成后，再统一做图像处理方面的工作。
-                    //Thread.Sleep(simulate_image_processing);
-                    double tmImgProc = ProcessImages();
+                    if (queueFrames.Count == 16 && m_PrintedTag == false)
+                    {
+                        m_PrintedTag = true;
+                        m_Queuing = false;
+
+                        // 得到全部16张
+                        semMultiFrames.Release(1);
+
+                        // 获取当前时间的毫秒计数
+                        tkCaptureComplete = DateTime.Now.Ticks;
+                        TimeSpan elapsedSpan = new TimeSpan(tkCaptureComplete - tkCaptureStart);
 
 
-                    Console.WriteLine("Time consumption of receiving 16 photos: {0:000.000} ms, and additional {1} ms for image processing!",
-                        elapsedSpan.TotalMilliseconds, tmImgProc);
+                        // 模拟图像处理 200ms
+                        // 注意：当前处理图片接收回调函数，为避免影响图像接收，在最后一张（第16张图像）接收完成后，再统一做图像处理方面的工作。
+                        //Thread.Sleep(simulate_image_processing);
+                        double tmImgProc = ProcessImages();
 
-                    //swLog.WriteLine("Time consumption of receiving 16 photos: {0:000.000} ms, and additional {1} ms for image processing!",
-                    //    elapsedSpan.TotalMilliseconds, tmImgProc);
-                    swLog.WriteLine("16frames_time, {0:.000}, imgproc_time, {1:.000}, ", elapsedSpan.TotalMilliseconds, tmImgProc);
-                    swLog.Flush();
 
+                        Console.WriteLine("Time consumption of receiving 16 photos: {0:000.000} ms, and additional {1} ms for image processing!",
+                            elapsedSpan.TotalMilliseconds, tmImgProc);
+
+                        //swLog.WriteLine("Time consumption of receiving 16 photos: {0:000.000} ms, and additional {1} ms for image processing!",
+                        //    elapsedSpan.TotalMilliseconds, tmImgProc);
+                        swLog.WriteLine("16frames_time, {0:000.000}, imgproc_time, {1:000.000}, ", elapsedSpan.TotalMilliseconds, tmImgProc);
+                        swLog.Flush();
+
+                    }
                 }
                 // 图像处理 ------------------------------------------------------------------ //
 
@@ -681,6 +722,29 @@ namespace AsynchronousGrabConsole
                 }
             }
 
+        }
+
+        public bool Waiting16Frames(int timeout)
+        {
+            return semMultiFrames.WaitOne(timeout);
+        }
+
+        public bool Start16FramesCapturing(double temp)
+        {
+            // Start new round of capturing 
+            tkCaptureStart = DateTime.Now.Ticks;
+
+            lock (s_lock)
+            {
+                queueFrames.Clear();
+                m_PrintedTag = false;
+                m_Queuing = true;
+                m_Temp = temp;
+
+                m_FramesFailed = 0;
+            }
+
+            return true;
         }
 
         /// <summary>
