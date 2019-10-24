@@ -468,8 +468,8 @@ namespace AsynchronousGrabConsole
                 Console.Write("x");
                 Console.Write(frame.Height);
 
-                Console.Write(" Format:");
-                Console.Write(frame.PixelFormat);
+                //Console.Write(" Format:");
+                //Console.Write(frame.PixelFormat);
 
                 Console.Write(" Stamp:");
                 Console.Write(frame.Timestamp);
