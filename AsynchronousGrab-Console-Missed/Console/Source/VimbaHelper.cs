@@ -61,7 +61,7 @@ namespace AsynchronousGrabConsole
         // Joe GE: Statistics for failures
         private int m_FramesMissed = 0; // Not consecutive frames
         private int m_FramesFailed = 0; // Not completed frame status
-        private ulong m_FrameID_Prev = 0;
+        //private ulong m_FrameID_Prev = 0;
         private ulong m_FrameTimeStampPre = 0;
 
         private long tkCaptureStart = DateTime.Now.Ticks;
@@ -661,7 +661,7 @@ namespace AsynchronousGrabConsole
         /// <param name="frame">The received frame</param>
         private void OnFrameReceived(Frame frame)
         {
-            const int simulate_image_processing = 200; // ms
+            //const int simulate_image_processing = 200; // ms
             try
             {
                 lock (s_lock)
