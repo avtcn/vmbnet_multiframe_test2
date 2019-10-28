@@ -165,7 +165,7 @@ namespace AsynchronousGrabConsole
                             vimbaHelper.Start16FramesCapturing(temp);
 
                             // Wait for 500 ms and continue the next round
-                            Thread.Sleep(400);
+                            Thread.Sleep(500);
 
                             vimbaHelper.Waiting16Frames(1000); 
                         }
