@@ -612,22 +612,38 @@ namespace AsynchronousGrabConsole
             long idx = 0;
             while (queueFrames.Count > 0)
             {
-                Frame frame = (Frame)queueFrames.Dequeue();
-                idx++;
-                String strName = String.Format("opencv{0:00}.png", idx);
-                String strNameCanny = String.Format("opencv{0:00}-canny.png", idx);
-
-                // Try OpenCvSharp processing
-                Mat img = new Mat((int)frame.Height, (int)frame.Width, MatType.CV_8U, frame.Buffer);
-                Mat res = new Mat();
-
-                Cv2.Canny(img, res, 50, 200);
-
-                // 保存最近一张
-                if (queueFrames.Count == 0)
+                try
                 {
-                    img.SaveImage(strName);
-                    res.SaveImage(strNameCanny);
+                    Frame frame = (Frame)queueFrames.Dequeue();
+                    idx++;
+                    String strName = String.Format("opencv{0:00}.png", idx);
+                    String strNameCanny = String.Format("opencv{0:00}-canny.png", idx);
+                    String strNameCanny2 = String.Format("opencv{0:00}-canny2.png", idx);
+
+                    // Try OpenCvSharp processing
+                    Mat img = new Mat((int)frame.Height, (int)frame.Width, MatType.CV_8U, frame.Buffer);
+                    Mat res = new Mat();
+                    Mat res2 = new Mat();
+
+                    Cv2.Canny(img, res, 20, 100);
+                    Cv2.Canny(img, res2, 30, 100);
+
+                    // 保存最近一张
+                    if (queueFrames.Count == 0)
+                    {
+                        img.SaveImage(strName);
+                        res.SaveImage(strNameCanny);
+                        res2.SaveImage(strNameCanny2);
+                    }
+
+                    img.Dispose();
+                    res.Dispose();
+                    res2.Dispose();
+                }
+                catch (OpenCVException e)
+                {
+                    Console.WriteLine("Error: ", e.ToString());
+
                 }
             }
 
@@ -663,18 +679,15 @@ namespace AsynchronousGrabConsole
                         // Convert frame into displayable image
                         OutPutFrameInfo(frame, queueFrames.Count == 1, frame.FrameID);
                     } 
-                }
 
 
 
 
-                // Joe: 
-                // 图像处理 ------------------------------------------------------------------ //
-                // 图像处理 ------------------------------------------------------------------ //
-                // 图像处理 ------------------------------------------------------------------ //
-                // automatically stop capturing when 16 maximum photos captured.
-                lock (s_lock)
-                {
+                    // Joe: 
+                    // 图像处理 ------------------------------------------------------------------ //
+                    // 图像处理 ------------------------------------------------------------------ //
+                    // 图像处理 ------------------------------------------------------------------ //
+                    // automatically stop capturing when 16 maximum photos captured.
 
 
                     if (queueFrames.Count == 16 && m_PrintedTag == false)
