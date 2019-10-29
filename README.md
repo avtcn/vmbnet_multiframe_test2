@@ -3,17 +3,21 @@ Vimba .NET 图像采集状态统计例程 - vmbnet_freerun_missing_frames_statis
 
 # 简介
 
-FreeRun Mode version:  
-VimbaNET_Examples\AsynchronousGrab-Console Example with missing/incomplete frames counting functions.  
-基于VimbaNET_Examples\AsynchronousGrab-Console例程，增加图像接收统计功能。  
-通过每张图片的连续递增序号以及每张图片的状态值来判断丢失或者不完整的图片数量。  
+FreeRun 版本，基于 `VimbaNET_Examples\AsynchronousGrab-Console` 例程。
+增加图像接收统计功能。通过每张图片的连续递增序号以及每张图片的状态值来判断丢失或者不完整的图片数量。  
 
-每次取图16张。 
+每次取图16张，统计这一组16张照片的耗时情况。
+1. 自这一组拍照开始时刻，直到取得第1张图像的等待时间。
+2. 自这一组拍照开始时刻，直到取得第16张图像的等待时间。
+3. 每当获取到一张图片时，将其保存到缓存队列，直到第16张图片到达时，再统一作算法处理（本例中使用OpenCV进行了模拟处理）。
 
 
 # 相机参数设置
 在相机缺省参数基础上，需要设置如下参数
 * `AcquisitionMode`: `Continuous`
+* `相机分辨率`: 1200x800 黑白
+* `相机帧速`: 158.9 fps
+
 
 
 # Visual Studio 设置
@@ -30,25 +34,60 @@ https://github.com/shimat/opencvsharp
 * FrameID: 自从相机上电运行后，每一张图片都具有一个连续递增的序列号。
 * Missed: 已经累积丢失的图片数量。
 * Incomplete: 已经累积收到的不完整图片数量。  
-        例如，下面是主要的采图失败状态码：  
-        `VmbFrameStatusFault = -4,`  
-        `VmbFrameStatusInvalid = -3,`   
-        `VmbFrameStatusTooSmall = -2,`    
-        `VmbFrameStatusIncomplete = -1,`  
-        `VmbFrameStatusComplete = 0`  
 * Stamp: 相机拍摄图片时的时间戳，也就是相机感光芯片直接成像的时刻。
-* StDiff: 与前一张图片时间戳的差。
+* CameraFPS: 根据图片时间戳Stamp计算得到。
+
 
 
 # 代码及编译  
 ## 基于下面代码
 在这里：https://github.com/avtcn/vmbnet_freerun_missing_frames_statistics
 ## 编译运行
-可以使用[Visual Studio 2010](https://visualstudio.microsoft.com/) 或者更高版本，Vimba SDK 建议使用 [2.1.3或者更高版本](https://www.alliedvision.com/en/products/software.html)。
+可以使用[Visual Studio 2010](https://visualstudio.microsoft.com/) 或者更高版本(建议使用2017,2019版本)，Vimba SDK 建议使用 [2.1.3或者更高版本](https://www.alliedvision.com/en/products/software.html)。
+
 ## 运行结果
+
+![](result6.png)
+以上是运行结果图示是由运行日志文件`truking-log.csv`生成的。
+1. FirstFrame （蓝色）： 第一张图片耗时，平均在4ms附近。
+2. 16frames（红色）：取得所有16张图片的耗时，平均在99ms附近。
+3. Imageproc（灰色）：OpenCV算法模拟实际图片处理耗时。
+以上程序结果是运行14400次的结果，周期500ms。
+
+```cpp
+index, 0000000001, temp, 52.700, firstframe, 007.835, 16frames_time, 095.534, imgproc_time, 169.824, 
+index, 0000000002, temp, 52.700, firstframe, 003.968, 16frames_time, 098.666, imgproc_time, 117.122, 
+index, 0000000003, temp, 52.700, firstframe, 005.964, 16frames_time, 100.064, imgproc_time, 108.336, 
+index, 0000000004, temp, 52.700, firstframe, 001.904, 16frames_time, 096.563, imgproc_time, 107.359, 
+index, 0000000005, temp, 52.700, firstframe, 004.880, 16frames_time, 099.424, imgproc_time, 107.361, 
+index, 0000000006, temp, 52.700, firstframe, 007.142, 16frames_time, 101.551, imgproc_time, 103.458, 
+index, 0000000007, temp, 52.700, firstframe, 003.052, 16frames_time, 097.434, imgproc_time, 099.556, 
+index, 0000000008, temp, 52.700, firstframe, 004.980, 16frames_time, 099.736, imgproc_time, 085.868, 
+index, 0000000009, temp, 52.700, firstframe, 007.185, 16frames_time, 101.544, imgproc_time, 082.989, 
+index, 0000000010, temp, 52.700, firstframe, 001.864, 16frames_time, 096.046, imgproc_time, 074.178, 
+index, 0000000011, temp, 52.700, firstframe, 004.067, 16frames_time, 098.038, imgproc_time, 075.152, 
+index, 0000000012, temp, 52.700, firstframe, 007.238, 16frames_time, 101.479, imgproc_time, 076.136, 
+index, 0000000013, temp, 52.700, firstframe, 002.905, 16frames_time, 097.692, imgproc_time, 076.128, 
 ```
 
 
+## 结论
+
+理论上16张图片的获得时间大致由下面公式的计算结果接近：
+
+```
+16frames时间(ms) = 16 * 1000 / 相机fps
+```
+
+实际： 
+`99ms` $\approx$ `16 * 1000 / 158.9 = 100.69ms`
+
+从实验中可以看出结果符合预期且波动较小。 
+
+
+## 运行日志
+
+```
 /////////////////////////////////////////////////////////////
 ///                                                       ///
 /// Vimba NET API Asynchronous Console Grab Example       ///
